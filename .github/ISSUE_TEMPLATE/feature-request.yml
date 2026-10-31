@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest an improvement for NanoFeed.
+title: '[Feature]: '
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues and the roadmap before submitting. Do not include private information.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Explain who is affected and what is difficult today.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the feature and how someone would use it.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and additional context
+      description: Include examples or mockups if useful.

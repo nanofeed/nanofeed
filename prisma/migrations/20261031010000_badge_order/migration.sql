@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "badge_order" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];

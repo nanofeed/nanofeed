@@ -1,0 +1,8 @@
+{
+  "recommendations": [
+    "Vue.volar",
+    "dbaeumer.vscode-eslint",
+    "Nuxt.nuxt-vscode",
+    "esbenp.prettier-vscode"
+  ]
+}

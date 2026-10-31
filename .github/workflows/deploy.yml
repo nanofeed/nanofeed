@@ -1,0 +1,51 @@
+name: Production deployment
+on:
+  workflow_dispatch:
+    inputs:
+      traffic_cutover_confirmed:
+        description: 'I have paused writes and stopped the legacy application from serving production traffic'
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: nanofeed-production
+  cancel-in-progress: false
+jobs:
+  verify:
+    if: github.ref == 'refs/heads/main'
+    uses: ./.github/workflows/ci.yml
+  deploy:
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    steps:
+      - name: Confirm production traffic cutover
+        env:
+          TRAFFIC_CUTOVER_CONFIRMED: ${{ inputs.traffic_cutover_confirmed }}
+        run: |
+          if [ "$TRAFFIC_CUTOVER_CONFIRMED" != "true" ]; then
+            echo "::error::Pause production writes and stop legacy traffic, then dispatch with traffic_cutover_confirmed checked."
+            exit 1
+          fi
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Apply reviewed migrations
+        run: npm run db:deploy
+        env:
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+      - name: Deploy the tested commit and wait for readiness
+        run: node scripts/deploy.mjs
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TEAM_ID: ${{ vars.VERCEL_TEAM_ID }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          VERCEL_PROJECT_NAME: ${{ vars.VERCEL_PROJECT_NAME }}
+          GITHUB_REPOSITORY_ID: ${{ github.repository_id }}
+          DEPLOY_SHA: ${{ github.sha }}

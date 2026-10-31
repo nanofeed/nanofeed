@@ -1,0 +1,51 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: test-only
+          POSTGRES_DB: nanofeed_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:test-only@localhost:5432/nanofeed_test
+      DIRECT_URL: postgresql://postgres:test-only@localhost:5432/nanofeed_test
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npx prisma validate
+      - run: npm run db:deploy
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm audit --audit-level=moderate
+      - run: npm run build
+      - run: npm run test:integration
+      - run: npm run build
+        env:
+          NITRO_PRESET: vercel
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: vercel-build
+          path: .vercel/output
+          include-hidden-files: true
+          retention-days: 7

@@ -1,0 +1,96 @@
+{
+  "name": "nanofeed",
+  "version": "1.0.0",
+  "description": "A minimal, text-based developer micro social network",
+  "private": true,
+  "license": "MIT",
+  "author": {
+    "name": "nanofeed",
+    "url": "https://github.com/nanofeed/nanofeed"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nanofeed/nanofeed"
+  },
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "preview": "nuxt preview",
+    "postinstall": "patch-package && prisma generate && nuxt prepare",
+    "typecheck": "nuxt typecheck",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:studio": "prisma studio",
+    "db:generate": "prisma generate",
+    "test": "vitest run",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "lint": "eslint .",
+    "db:deploy": "prisma migrate deploy",
+    "start": "node .output/server/index.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "dependencies": {
+    "@nuxt/image": "2.2.0",
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
+    "@vueuse/nuxt": "15.0.0",
+    "better-auth": "1.7.14",
+    "nuxt": "4.6.3",
+    "pg": "8.23.1",
+    "rootcap": "1.0.0",
+    "shiki": "4.5.0",
+    "vue": "3.5.44",
+    "vue-router": "5.4.0"
+  },
+  "devDependencies": {
+    "@nuxt/devtools": "3.4.4",
+    "@nuxt/eslint": "1.17.0",
+    "@nuxt/kit": "4.6.3",
+    "@types/node": "24.19.2",
+    "@types/pg": "8.23.1",
+    "dotenv": "18.0.9",
+    "eslint": "10.13.0",
+    "markdown-it": "15.0.3",
+    "patch-package": "8.0.1",
+    "prettier": "3.9.10",
+    "prisma": "7.10.1",
+    "sass": "1.107.0",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vitest": "5.0.5",
+    "vue-tsc": "3.3.13",
+    "yaml": "2.9.1"
+  },
+  "engines": {
+    "node": ">=24.0.0 <25"
+  },
+  "type": "module",
+  "overrides": {
+    "minimatch@5.1.9": "11.0.3",
+    "eslint@10.13.0": {
+      "minimatch": "11.0.3"
+    },
+    "@eslint/config-array@0.23.5": {
+      "minimatch": "11.0.3"
+    },
+    "@typescript-eslint/typescript-estree@8.72.1": {
+      "minimatch": "11.0.3"
+    },
+    "eslint-plugin-import-x@4.17.1": {
+      "minimatch": "11.0.3"
+    },
+    "glob@13.0.6": "14.0.3",
+    "archiver-utils@5.0.2": {
+      "glob": "14.0.3"
+    }
+  },
+  "allowScripts": {
+    "@parcel/watcher@2.6.0": true,
+    "@prisma/engines@7.10.1": true,
+    "esbuild@0.28.2": true,
+    "prisma@7.10.1": true,
+    "unrs-resolver@1.12.2": true
+  }
+}

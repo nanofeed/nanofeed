@@ -1,0 +1,35 @@
+name: Bug report
+description: Report something that is not working as expected.
+title: '[Bug]: '
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Search existing issues first. Do not include passwords, tokens, private logs, or personal data.
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Select ...
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Device, operating system, browser and version, or local Node version if relevant.
+  - type: textarea
+    id: context
+    attributes:
+      label: Screenshots or additional context
+      description: Remove sensitive information before sharing.

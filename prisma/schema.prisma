@@ -1,0 +1,338 @@
+// prisma/schema.prisma
+// NanoFeed — Database Schema
+// PostgreSQL + Prisma ORM
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── Enums ──────────────────────────────────────────────────────
+
+/// User role — determines access level in the application
+enum Role {
+  USER  // Standard user (default)
+  OWNER // Project owner — can access the dashboard
+}
+
+/// Verification request status
+enum VerificationStatus {
+  PENDING  // Awaiting review
+  ACCEPTED // Verification approved — user.verified = true
+  REJECTED // Verification denied
+}
+
+/// Report reason categories
+enum ReportReason {
+  SPAM
+  HARASSMENT
+  ILLEGAL_CONTENT
+  OTHER
+}
+
+/// Report status (for owner workflow)
+enum ReportStatus {
+  OPEN     // Awaiting review
+  RESOLVED // Owner has taken action
+  DISMISSED // Owner dismissed the report
+}
+
+/// Notification types for the notification system
+enum NotificationType {
+  MENTION
+  REPLY
+  REACTION
+  ACCOUNT_STATUS
+  VERIFICATION_UPDATE
+}
+
+// ── Models ─────────────────────────────────────────────────────
+
+/// User account — tied to GitHub identity
+model User {
+  id          String   @id @default(cuid())
+
+  // GitHub identity (immutable after creation)
+  githubId    String   @unique @map("github_id")
+  email       String   @unique
+  emailVerified Boolean @default(false) @map("email_verified")
+
+  // Customizable fields
+  username    String   @unique
+  displayName String   @map("display_name")
+  avatar      String   // URL — defaults to GitHub avatar
+
+  // Optional profile data
+  bio         String?
+
+  // Role and verification
+  role        Role     @default(USER)
+  verified    Boolean  @default(false)
+  contributorCommit String? @map("contributor_commit")
+  badgeOrder String[] @default([]) @map("badge_order")
+  verificationRemovedAt DateTime? @map("verification_removed_at")
+
+  // Restriction
+  isRestricted Boolean   @default(false) @map("is_restricted")
+  restrictionNote String? @db.Text @map("restriction_note")
+
+  // Account lifecycle — deactivation & soft-delete
+  isActive            Boolean   @default(true) @map("is_active")
+  deletionRequestedAt DateTime? @map("deletion_requested_at")
+
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  posts                Post[]
+  verificationRequests VerificationRequest[]
+  reportsMade          Report[]              @relation("ReporterRelation")
+  reportsReceived      Report[]              @relation("ReportedUserRelation")
+  reactions            Reaction[]
+  
+  // Notifications
+  notificationsReceived Notification[]       @relation("UserNotifications")
+  notificationsSent     Notification[]       @relation("NotificationSender")
+
+  // Social
+  following           Follow[] @relation("FollowingRelation")
+  followers           Follow[] @relation("FollowerRelation")
+
+  // Better Auth relations
+  accounts Account[]
+  sessions Session[]
+  recommendationSnapshots RecommendationSnapshot[]
+
+  @@map("users")
+}
+
+/// Follow — tracks user relationships
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String   @map("follower_id")
+  follower    User     @relation("FollowingRelation", fields: [followerId], references: [id], onDelete: Cascade)
+  followingId String   @map("following_id")
+  following   User     @relation("FollowerRelation", fields: [followingId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([followerId, followingId])
+  @@map("follows")
+}
+
+/// Post — text-only, max 280 characters
+model Post {
+  id        String   @id @default(cuid())
+  content   String   @db.VarChar(280)
+  hidden    Boolean  @default(false) // Added/Ensured this field
+
+  // Author relation
+  authorId  String   @map("author_id")
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Social & Moderation
+  parentId  String?  @map("parent_id")
+  parent    Post?    @relation("PostReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies   Post[]    @relation("PostReplies")
+
+  // Resposts
+  repostOfId String?  @map("repost_of_id")
+  repostOf   Post?    @relation("PostReposts", fields: [repostOfId], references: [id], onDelete: SetNull)
+  reposts    Post[]    @relation("PostReposts")
+
+  // Relations
+  hashtags  Hashtag[]  @relation("PostHashtags")
+  reports   Report[]
+  reactions Reaction[]
+  notifications Notification[]
+
+  @@index([authorId])
+  @@index([parentId])
+  @@index([repostOfId])
+  @@index([createdAt(sort: Desc)])
+  @@map("posts")
+}
+
+/// Reaction — users can "love" posts
+model Reaction {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String   @map("post_id")
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, postId])
+  @@map("reactions")
+}
+
+/// Hashtag — parsed from post content (#tag)
+model Hashtag {
+  id        String   @id @default(cuid())
+  tag       String   @unique // stored lowercase without leading #
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  posts Post[] @relation("PostHashtags")
+
+  @@map("hashtags")
+}
+
+/// Verification request — users apply for a verified badge
+model VerificationRequest {
+  id       String             @id @default(cuid())
+  userId   String             @map("user_id")
+  user     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Submitted info
+  realName String             @map("real_name")
+  email    String
+  reason   String             @db.Text
+
+  // Status lifecycle
+  status   VerificationStatus @default(PENDING)
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("verification_requests")
+}
+
+/// Report — users can report posts or other users
+model Report {
+  id String @id @default(cuid())
+
+  // Who filed the report
+  reporterId String @map("reporter_id")
+  reporter   User   @relation("ReporterRelation", fields: [reporterId], references: [id], onDelete: Cascade)
+
+  // What is being reported (one of these must be set)
+  postId         String? @map("post_id")
+  post           Post?   @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  reportedUserId String? @map("reported_user_id")
+  reportedUser   User?   @relation("ReportedUserRelation", fields: [reportedUserId], references: [id], onDelete: Cascade)
+
+  // Report details
+  reason ReportReason
+  notes  String?      @db.Text
+
+  // Status
+  status ReportStatus @default(OPEN)
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("reports")
+}
+
+/// Notification — users are notified of mentions, replies, etc.
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id") // The user receiving the notification
+  user      User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  
+  type      NotificationType
+  message   String   @db.Text // The human-readable message or JSON payload
+  read      Boolean  @default(false)
+  
+  // Optional links to related entities
+  postId    String?  @map("post_id") 
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  senderId  String?  @map("sender_id") // Who triggered it, if applicable
+  sender    User?    @relation("NotificationSender", fields: [senderId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("notifications")
+}
+
+// Better Auth uses the existing table names to preserve user/account identities.
+model Account {
+  id String @id @default(cuid())
+  userId String @map("user_id")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerId String @map("provider")
+  accountId String @map("provider_account_id")
+  accessToken String? @db.Text @map("access_token")
+  refreshToken String? @db.Text @map("refresh_token")
+  idToken String? @db.Text @map("id_token")
+  accessTokenExpiresAt DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope String?
+  password String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id String @id @default(cuid())
+  token String @unique @map("session_token")
+  userId String @map("user_id")
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime @map("expires")
+  ipAddress String? @map("ip_address")
+  userAgent String? @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Verification {
+  id String @id @default(cuid())
+  identifier String
+  value String @db.Text
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  @@index([identifier])
+  @@map("auth_verifications")
+}
+
+model RateLimit {
+  id String @id @default(cuid())
+  key String @unique
+  count Int
+  lastRequest BigInt @map("last_request")
+  @@map("rate_limits")
+}
+
+// Ranked IDs are retained briefly to keep pagination stable as engagement changes.
+model RecommendationSnapshot {
+  id String @id @default(cuid())
+  userId String? @map("user_id")
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  posts Json
+  expiresAt DateTime @map("expires_at")
+  @@index([expiresAt])
+  @@index([userId])
+  @@map("recommendation_snapshots")
+}
+
+// Singleton settings managed by the project owner.
+model SiteSettings {
+  id                          Int     @id @default(1)
+  verificationRequestsEnabled Boolean @default(true) @map("verification_requests_enabled")
+  maintenanceEnabled          Boolean @default(false) @map("maintenance_enabled")
+  maintenanceMessage          String  @default("Site under construction. Please check back soon.") @map("maintenance_message") @db.Text
+  maintenanceEndsAt           DateTime? @map("maintenance_ends_at")
+
+  @@map("site_settings")
+}

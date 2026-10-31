@@ -1,0 +1,13 @@
+{
+  "editor.formatOnSave": true,
+  "editor.tabSize": 2,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "search.exclude": {
+    "**/.nuxt": true,
+    "**/.output": true,
+    "**/node_modules": true
+  }
+}

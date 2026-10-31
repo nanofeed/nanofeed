@@ -1,0 +1,8 @@
+# GitHub Linguist: include project data and documentation languages in statistics.
+# Programming and markup languages use GitHub's normal detection.
+*.prisma linguist-detectable
+*.sql linguist-detectable
+*.json linguist-detectable
+*.yml linguist-detectable
+*.yaml linguist-detectable
+*.toml linguist-detectable
