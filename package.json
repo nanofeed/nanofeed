@@ -37,7 +37,7 @@
     "@prisma/client": "7.10.1",
     "@vueuse/nuxt": "15.0.0",
     "better-auth": "1.7.14",
-    "nuxt": "4.6.3",
+    "nuxt": "4.6.4",
     "pg": "8.23.1",
     "rootcap": "1.2.0",
     "shiki": "4.5.0",
